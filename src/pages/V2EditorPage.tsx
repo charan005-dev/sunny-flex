@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect } from "react";
 import { useEditor } from "../contexts/EditorContext";
-import { useComponents, useRoutes } from "../hooks/useEditorData";
+import { useComponents } from "../hooks/useEditorData";
+import api from "../services/api";
 import TenantCohortSelector from "../components/layout-editor/TenantCohortSelector";
 import ViewportToggle from "../components/layout-editor/ViewportToggle";
+import { emitToast } from "../components/layout-editor/PublishBar";
 import { Trash2, X } from "lucide-react";
 import type { ComponentEntry } from "../hooks/useEditorData";
 
@@ -37,10 +39,10 @@ let _id = 0;
 export default function V2EditorPage() {
   const editor = useEditor();
   const { data: components = [] } = useComponents();
-  const { data: routes } = useRoutes();
   const [placed, setPlaced] = useState<PlacedComponent[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
   const [librarySizes, setLibrarySizes] = useState<Record<string, ComponentSize>>({});
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const dragData = useRef<ComponentEntry | null>(null);
@@ -51,15 +53,9 @@ export default function V2EditorPage() {
   const isDesktop = viewport === "desktop";
   const isReady = !!(editor.selectedTenant && editor.selectedCohort && editor.selectedRoute);
 
-  // Filter library
-  const selectedRouteData = routes?.find((r) => r.id === editor.selectedRoute?.id);
-  const allowedSlotTypes = selectedRouteData?.slotDefinitions
-    ?.filter((sd) => sd.viewports.includes(viewport))
-    ?.flatMap((sd) => sd.allowedSlotTypes) ?? [];
+  // Show ALL components — one per slot type only
   const usedSlotTypes = new Set(placed.map((c) => c.slotType));
-  const filtered = (allowedSlotTypes.length > 0
-    ? components.filter((c) => allowedSlotTypes.includes(c.slotType))
-    : components).filter((c) => !usedSlotTypes.has(c.slotType));
+  const filtered = components.filter((c) => !usedSlotTypes.has(c.slotType));
   const grouped = filtered.reduce<Record<string, ComponentEntry[]>>((acc, c) => {
     if (!acc[c.slotType]) acc[c.slotType] = [];
     acc[c.slotType].push(c);
@@ -129,6 +125,76 @@ export default function V2EditorPage() {
     }
   }
 
+  // Build a V1-compatible layoutJson from placed components
+  function buildLayoutJson() {
+    const cols = 12;
+    const rows: string[][] = [];
+    let currentRow: string[] = [];
+    let currentColUsed = 0;
+
+    for (const comp of placed) {
+      if (currentColUsed + comp.colSpan > cols) {
+        // Fill remaining with dots
+        while (currentRow.length < cols) currentRow.push(".");
+        rows.push(currentRow);
+        currentRow = [];
+        currentColUsed = 0;
+      }
+      const areaName = comp.slotType;
+      for (let i = 0; i < comp.colSpan; i++) currentRow.push(areaName);
+      currentColUsed += comp.colSpan;
+    }
+    if (currentRow.length > 0) {
+      while (currentRow.length < cols) currentRow.push(".");
+      rows.push(currentRow);
+    }
+
+    const slots: Record<string, { componentCode: string; gridArea: string; props: Record<string, unknown> }> = {};
+    for (const comp of placed) {
+      slots[comp.slotType] = {
+        componentCode: comp.componentCode,
+        gridArea: comp.slotType,
+        props: comp.props,
+      };
+    }
+
+    return {
+      routePath: editor.selectedRoute?.path ?? "/",
+      viewport,
+      gridTemplate: {
+        columns: `repeat(${cols}, 1fr)`,
+        rows: rows.map(() => "auto").join(" "),
+        gap: "12px",
+        areas: rows.map((r) => r.join(" ")),
+      },
+      slots,
+    };
+  }
+
+  async function handlePublish() {
+    if (!editor.selectedRoute || !editor.selectedTenant || !editor.selectedCohort || placed.length === 0) return;
+    setIsPublishing(true);
+    try {
+      const layoutJson = buildLayoutJson();
+      // Create draft
+      const draftRes = await api.post("/layouts", {
+        routeId: editor.selectedRoute.id,
+        tenantId: editor.selectedTenant.id,
+        cohortId: editor.selectedCohort.id,
+        viewport,
+        layoutJson,
+      });
+      const draftId = draftRes.data.data.id;
+      // Publish it
+      await api.post(`/layouts/${draftId}/publish`);
+      emitToast("V2 layout published successfully");
+    } catch (err) {
+      console.error("Publish failed:", err);
+      emitToast("Publish failed — check console");
+    }
+    setIsPublishing(false);
+  }
+
   const selectedComp = selectedId ? placed.find((c) => c.id === selectedId) : null;
   const previewUrl = `${import.meta.env.VITE_CONSUMER_URL || "http://localhost:5174"}/preview/v2?tenantCode=${encodeURIComponent(tenantCode)}&viewport=${viewport}`;
 
@@ -140,10 +206,16 @@ export default function V2EditorPage() {
           <ViewportToggle />
           <span className="text-xs text-gray-400">{placed.length} components</span>
           {placed.length > 0 && (
-            <button onClick={() => { setPlaced([]); setSelectedId(null); }}
-              className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors">
-              Clear all
-            </button>
+            <>
+              <button onClick={() => { setPlaced([]); setSelectedId(null); }}
+                className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors">
+                Clear all
+              </button>
+              <button onClick={handlePublish} disabled={isPublishing || !isReady}
+                className="px-4 py-2 text-sm font-medium text-white bg-black rounded-lg hover:bg-neutral-800 disabled:opacity-50 transition-colors">
+                {isPublishing ? "Publishing..." : "Publish"}
+              </button>
+            </>
           )}
         </div>
       </div>
