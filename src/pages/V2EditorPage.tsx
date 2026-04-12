@@ -43,6 +43,7 @@ export default function V2EditorPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
   const [librarySizes, setLibrarySizes] = useState<Record<string, ComponentSize>>({});
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const dragData = useRef<ComponentEntry | null>(null);
@@ -72,6 +73,16 @@ export default function V2EditorPage() {
   }, [selectedId]);
 
   // Messages from iframe
+  // Toast listener
+  useEffect(() => {
+    function handleToast(e: Event) {
+      setToast((e as CustomEvent).detail);
+      setTimeout(() => setToast(null), 2000);
+    }
+    window.addEventListener("app-toast", handleToast);
+    return () => window.removeEventListener("app-toast", handleToast);
+  }, []);
+
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
       const msg = event.data;
@@ -348,6 +359,20 @@ export default function V2EditorPage() {
             }}
             onDrop={handleDrop}
             onDragEnd={() => { setIsDragging(false); iframeRef.current?.contentWindow?.postMessage({ type: "v2-drag-end" }, "*"); }}>
+            {/* Toast */}
+            {toast && (
+              <div className="fixed top-[135px] right-4 z-50 animate-[slideIn_0.2s_ease-out]">
+                <div className="flex items-center gap-2.5 bg-white border border-gray-200 shadow-lg rounded-lg pl-3 pr-2.5 py-2.5">
+                  <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center shrink-0">
+                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                  </div>
+                  <span className="text-sm font-medium text-gray-900">{toast}</span>
+                  <button onClick={() => setToast(null)} className="text-gray-300 hover:text-gray-500 ml-1">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="flex justify-center pb-10">
               <div className={`relative rounded-xl border shadow-lg overflow-hidden bg-white ${isDragging ? "border-black ring-2 ring-black/20" : "border-gray-300"} ${isDesktop ? "w-full max-w-[1100px]" : "w-[390px]"}`}
                 style={{ height: isDesktop ? 800 : 844 }}>
