@@ -130,8 +130,15 @@ export default function ComponentPalette({ components, slotDefinitions }: Compon
     ? viewportSlots.find((s) => s.slotKey === selectedSlotKey)
     : null;
 
+  // If no slot definition exists (new route with template layout), derive from the current component
+  const currentSlotConfig = selectedSlotKey && layoutConfig ? layoutConfig.slots[selectedSlotKey] : null;
+  const currentComp = currentSlotConfig ? components.find((c) => c.code === currentSlotConfig.componentCode) : null;
+  const derivedSlotType = currentComp?.slotType;
+
   const allowedComponents = selectedSlotDef
     ? components.filter((c) => selectedSlotDef.allowedSlotTypes.includes(c.slotType))
+    : derivedSlotType
+    ? components.filter((c) => c.slotType === derivedSlotType)
     : [];
 
   const currentComponentCode = selectedSlotKey && layoutConfig
@@ -147,7 +154,7 @@ export default function ComponentPalette({ components, slotDefinitions }: Compon
   }
 
   // No slot selected — show empty state
-  if (!selectedSlotKey || !selectedSlotDef) {
+  if (!selectedSlotKey || (!selectedSlotDef && !derivedSlotType)) {
     return (
       <div className="w-72 bg-white border-r border-gray-200 flex flex-col items-center justify-center p-8">
         <svg className="w-10 h-10 text-neutral-200 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -165,7 +172,7 @@ export default function ComponentPalette({ components, slotDefinitions }: Compon
       <div className="px-5 py-4 border-b border-gray-100">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold text-gray-900">{selectedSlotDef.name}</h3>
+            <h3 className="text-sm font-semibold text-gray-900">{selectedSlotDef?.name ?? selectedSlotKey}</h3>
             <p className="text-xs text-gray-400 mt-0.5">Click preview to zoom, drag to canvas</p>
           </div>
           <button
