@@ -54,7 +54,7 @@ export default function LayoutEditorPage() {
     })
   );
 
-  // Load the default cohort's layout as fallback when this cohort has none
+  // Fallback 1: default cohort's layout for this route
   const defaultCohort = cohorts?.find((c) => c.code === "default");
   const { data: fallbackLayouts } = useLayouts({
     routeId: editor.selectedRoute?.id,
@@ -64,15 +64,27 @@ export default function LayoutEditorPage() {
     status: "draft",
   });
 
+  // Fallback 2: /my-card route's layout as a template for new routes
+  const myCardRoute = routes?.find((r) => r.path === "/my-card");
+  const { data: templateLayouts } = useLayouts({
+    routeId: myCardRoute?.id,
+    tenantId: editor.selectedTenant?.id,
+    cohortId: defaultCohort?.id,
+    viewport: editor.viewport,
+    status: "draft",
+  });
+
   useEffect(() => {
     if (layouts && layouts.length > 0) {
-      // This cohort has its own layout
       const draft = layouts[0];
       editor.loadLayout(draft.id, draft.layoutJson);
     } else if (fallbackLayouts && fallbackLayouts.length > 0) {
-      // Use default cohort's layout as a template (no layoutId — save will create new)
       const fallback = fallbackLayouts[0];
       editor.loadLayout("", fallback.layoutJson);
+    } else if (templateLayouts && templateLayouts.length > 0) {
+      // New route with no layout — use my-card as template
+      const template = templateLayouts[0];
+      editor.loadLayout("", template.layoutJson);
     } else if (
       editor.selectedRoute &&
       editor.selectedTenant &&
@@ -80,7 +92,6 @@ export default function LayoutEditorPage() {
       components.length > 0 &&
       !editor.layoutConfig
     ) {
-      // No layouts at all — create from scratch
       editor.createNewLayout(editor.selectedRoute, editor.selectedRoute.slotDefinitions, components);
     }
   }, [layouts, fallbackLayouts, editor.selectedRoute, editor.selectedTenant, editor.selectedCohort, components]);
