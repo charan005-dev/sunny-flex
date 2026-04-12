@@ -215,9 +215,12 @@ export default function V2EditorPage() {
       const draftId = draftRes.data.data.id;
       await apiCall(() => api.post(`/layouts/${draftId}/publish`));
       emitToast("V2 layout published successfully");
-    } catch (err) {
-      console.error("Publish failed:", err);
-      emitToast("error:Publish failed — server may be starting up, try again");
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { status?: number; data?: { error?: string; message?: string } } };
+      const status = axiosErr?.response?.status;
+      const msg = axiosErr?.response?.data?.message || axiosErr?.response?.data?.error || "Unknown error";
+      console.error("Publish failed:", status, msg, err);
+      emitToast(`error:Publish failed (${status ?? "network"}) — ${msg}`);
     }
     setIsPublishing(false);
   }
