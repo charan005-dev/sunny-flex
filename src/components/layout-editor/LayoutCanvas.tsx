@@ -114,8 +114,11 @@ export default function LayoutCanvas() {
   const iframeWidth = isDesktop ? 1440 : mobileDevice.width;
 
   const refreshPreview = useCallback(() => {
-    if (iframeRef.current?.contentWindow) {
-      iframeRef.current.contentWindow.postMessage({ type: "refresh" }, "*");
+    if (iframeRef.current) {
+      // Force full reload — postMessage + cache invalidation can be slow on free tier
+      const src = iframeRef.current.src;
+      iframeRef.current.src = "";
+      setTimeout(() => { if (iframeRef.current) iframeRef.current.src = src; }, 50);
     }
   }, []);
 
