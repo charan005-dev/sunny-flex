@@ -33,7 +33,7 @@ function AppContent() {
           </svg>
           <span className="text-base font-semibold tracking-tight">Sunny FLEX</span>
           <span className="text-xs text-neutral-400 border border-neutral-700 rounded px-1.5 py-0.5 ml-1">Console</span>
-          {/* Nav hidden — /v2 accessible via direct URL only */}
+          <span className="text-[10px] text-neutral-600 ml-2">v{APP_VERSION}</span>
         </div>
         <div className="flex items-center gap-4">
           <span className="text-sm text-neutral-400">{user?.email}</span>
