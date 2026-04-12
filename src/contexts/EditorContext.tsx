@@ -237,7 +237,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
         await api.put(`/layouts/${s.layoutId}`, { layoutJson: s.layoutConfig });
       }
       await api.post(`/layouts/${s.layoutId}/publish`);
-      setState((prev) => ({ ...prev, isDirty: false, isPublishing: false }));
+      setState((prev) => ({ ...prev, isDirty: false, draftEdited: false, isPublishing: false }));
     } catch (err) {
       console.error("Publish failed:", err);
       setState((prev) => ({ ...prev, isPublishing: false }));
