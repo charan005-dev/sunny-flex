@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useCallback, useRef, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useRef, useEffect } from "react";
+import type { ReactNode } from "react";
 import api from "../services/api";
 import type { LayoutConfig, SlotDefinition, ComponentEntry, Tenant, Cohort, RouteConfig } from "../hooks/useEditorData";
 

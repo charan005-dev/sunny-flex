@@ -94,7 +94,6 @@ export default function LayoutCanvas() {
   const [slotRects, setSlotRects] = useState<Record<string, SlotRect>>({});
   const [zoom, setZoom] = useState(1);
   const [toast, setToast] = useState<string | null>(null);
-  const [fallbackNotice, setFallbackNotice] = useState<string | null>(null);
   const [mobileDevice, setMobileDevice] = useState<DevicePreset>(MOBILE_DEVICES[1]); // iPhone 14 default
   const [showDeviceMenu, setShowDeviceMenu] = useState(false);
   const slotDefinitions = selectedRoute?.slotDefinitions ?? [];
@@ -109,15 +108,10 @@ export default function LayoutCanvas() {
     return () => window.removeEventListener("app-toast", handleToast);
   }, []);
 
-  // Reset fallback notice when selections change
-  useEffect(() => {
-    setFallbackNotice(null);
-  }, [viewport, selectedTenant, selectedCohort, selectedRoute]);
 
   const isDesktop = viewport === "desktop";
 
   const iframeWidth = isDesktop ? 1440 : mobileDevice.width;
-  const iframeHeight = isDesktop ? "100vh" : `${mobileDevice.height}px`;
 
   const refreshPreview = useCallback(() => {
     if (iframeRef.current?.contentWindow) {
@@ -133,7 +127,6 @@ export default function LayoutCanvas() {
       if (!msg?.type) return;
       if (msg.type === "slot-clicked") selectSlot(msg.slotKey);
       if (msg.type === "slot-rects") setSlotRects(msg.rects);
-      if (msg.type === "cohort-fallback") setFallbackNotice(msg.fallbackCohort);
       if (msg.type === "slot-clicked" || msg.type === "slot-rects") { /* no fallback reset */ }
 
     }

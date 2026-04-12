@@ -1,9 +1,9 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useEditor } from "../contexts/EditorContext";
 import { useComponents, useRoutes } from "../hooks/useEditorData";
 import TenantCohortSelector from "../components/layout-editor/TenantCohortSelector";
 import ViewportToggle from "../components/layout-editor/ViewportToggle";
-import { Trash2, GripVertical, X } from "lucide-react";
+import { Trash2, X } from "lucide-react";
 import type { ComponentEntry } from "../hooks/useEditorData";
 
 type ComponentSize = "small" | "medium" | "large" | "full";
@@ -21,7 +21,6 @@ interface PlacedComponent {
 }
 
 const SIZE_SPAN: Record<ComponentSize, number> = { small: 3, medium: 4, large: 6, full: 12 };
-const SIZE_LABEL: Record<ComponentSize, string> = { small: "S (3)", medium: "M (4)", large: "L (6)", full: "Full (12)" };
 const SIZE_CYCLE: ComponentSize[] = ["small", "medium", "large", "full"];
 const DEFAULT_SIZES: Record<string, ComponentSize> = {
   sidebar: "small", dial: "medium", info_card: "medium", streak_calendar: "medium",

@@ -16,13 +16,6 @@ const SLOT_TYPE_COLORS: Record<string, { bg: string; border: string; badge: stri
   sidebar: { bg: "bg-white", border: "border-neutral-200", badge: "bg-neutral-100 text-neutral-700" },
 };
 
-const SLOT_TYPE_LABELS: Record<string, string> = {
-  dial: "Dial / Gauge",
-  info_card: "Info Cards",
-  actions_list: "Actions Lists",
-  recent_activity: "Recent Activity",
-  sidebar: "Navigation",
-};
 
 function refreshPreview() {
   const fn = (window as unknown as Record<string, unknown>).__refreshPreview;
