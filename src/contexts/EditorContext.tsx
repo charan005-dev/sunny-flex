@@ -3,13 +3,23 @@ import type { ReactNode } from "react";
 import api from "../services/api";
 import type { LayoutConfig, SlotDefinition, ComponentEntry, Tenant, Cohort, RouteConfig } from "../hooks/useEditorData";
 
-const STORAGE_KEY = "app-builder-selections";
+// Tab-specific storage key — each tab gets its own ID
+const TAB_ID = `tab-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+const STORAGE_KEY = `app-builder-${TAB_ID}`;
 
 interface SavedSelections {
   tenantId?: string;
   cohortId?: string;
   routeId?: string;
   viewport?: "desktop" | "mobile";
+}
+
+// Clean up old tab keys on load
+for (let i = sessionStorage.length - 1; i >= 0; i--) {
+  const key = sessionStorage.key(i);
+  if (key?.startsWith("app-builder-tab-") && key !== STORAGE_KEY) {
+    sessionStorage.removeItem(key);
+  }
 }
 
 function loadSelections(): SavedSelections {
