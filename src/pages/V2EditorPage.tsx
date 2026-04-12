@@ -185,23 +185,39 @@ export default function V2EditorPage() {
   async function handlePublish() {
     if (!editor.selectedRoute || !editor.selectedTenant || !editor.selectedCohort || placed.length === 0) return;
     setIsPublishing(true);
+
+    // Retry helper for Render cold starts
+    async function apiCall<T>(fn: () => Promise<T>, retries = 2): Promise<T> {
+      for (let i = 0; i <= retries; i++) {
+        try { return await fn(); }
+        catch (err: unknown) {
+          const status = (err as { response?: { status?: number } })?.response?.status;
+          if (status === 502 && i < retries) {
+            setToast("Server waking up... retrying");
+            await new Promise((r) => setTimeout(r, 3000));
+            continue;
+          }
+          throw err;
+        }
+      }
+      throw new Error("Max retries");
+    }
+
     try {
       const layoutJson = buildLayoutJson();
-      // Create draft
-      const draftRes = await api.post("/layouts", {
-        routeId: editor.selectedRoute.id,
-        tenantId: editor.selectedTenant.id,
-        cohortId: editor.selectedCohort.id,
+      const draftRes = await apiCall(() => api.post("/layouts", {
+        routeId: editor.selectedRoute!.id,
+        tenantId: editor.selectedTenant!.id,
+        cohortId: editor.selectedCohort!.id,
         viewport,
         layoutJson,
-      });
+      }));
       const draftId = draftRes.data.data.id;
-      // Publish it
-      await api.post(`/layouts/${draftId}/publish`);
+      await apiCall(() => api.post(`/layouts/${draftId}/publish`));
       emitToast("V2 layout published successfully");
     } catch (err) {
       console.error("Publish failed:", err);
-      emitToast("Publish failed — check console");
+      emitToast("error:Publish failed — server may be starting up, try again");
     }
     setIsPublishing(false);
   }
@@ -360,19 +376,26 @@ export default function V2EditorPage() {
             onDrop={handleDrop}
             onDragEnd={() => { setIsDragging(false); iframeRef.current?.contentWindow?.postMessage({ type: "v2-drag-end" }, "*"); }}>
             {/* Toast */}
-            {toast && (
+            {toast && (() => {
+              const isError = toast.startsWith("error:");
+              const message = isError ? toast.slice(6) : toast;
+              return (
               <div className="fixed top-[135px] right-4 z-50 animate-[slideIn_0.2s_ease-out]">
-                <div className="flex items-center gap-2.5 bg-white border border-gray-200 shadow-lg rounded-lg pl-3 pr-2.5 py-2.5">
-                  <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center shrink-0">
-                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                <div className={`flex items-center gap-2.5 bg-white border shadow-lg rounded-lg pl-3 pr-2.5 py-2.5 ${isError ? "border-red-200" : "border-gray-200"}`}>
+                  <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${isError ? "bg-red-500" : "bg-green-500"}`}>
+                    {isError
+                      ? <X className="w-3 h-3 text-white" />
+                      : <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                    }
                   </div>
-                  <span className="text-sm font-medium text-gray-900">{toast}</span>
+                  <span className={`text-sm font-medium ${isError ? "text-red-700" : "text-gray-900"}`}>{message}</span>
                   <button onClick={() => setToast(null)} className="text-gray-300 hover:text-gray-500 ml-1">
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
-            )}
+              );
+            })()}
             <div className="flex justify-center pb-10">
               <div className={`relative rounded-xl border shadow-lg overflow-hidden bg-white ${isDragging ? "border-black ring-2 ring-black/20" : "border-gray-300"} ${isDesktop ? "w-full max-w-[1100px]" : "w-[390px]"}`}
                 style={{ height: isDesktop ? 800 : 844 }}>
